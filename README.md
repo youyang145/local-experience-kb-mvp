@@ -50,7 +50,8 @@ kb serve [--port 7788]
 
 ## DSH 插件（可选）
 
-`dsh-plugin/` 是把它接进 DeepSeek Harness 的宿主适配器：三个/五个工具 + 右下角挂件 + 每轮索引注入。
+`dsh-plugin/` 是把它接进 DeepSeek Harness 的宿主适配器：五个工具 + 右下角挂件 + 每轮索引注入。
+说明见 [dsh-plugin/README.md](dsh-plugin/README.md)，那里面也有指向骨架的链接。
 
 ```powershell
 dsh plugin --profile <profile> add "<路径>\dsh-plugin" --ignore-workspace-root-check
