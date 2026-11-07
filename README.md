@@ -50,11 +50,11 @@ kb serve [--port 7788]
 
 ## DSH 插件（可选）
 
-`dsh-plugin/` 是把它接进 DeepSeek Harness 的宿主适配器：五个工具 + 右下角挂件 + 每轮索引注入。
-说明见 [dsh-plugin/README.md](dsh-plugin/README.md)，那里面也有指向骨架的链接。
+DSH 适配器已经独立成库：[dsh-plugin-local-kb](https://github.com/youyang145/dsh-plugin-local-kb)。
+五个工具 + 右下角挂件 + 每轮索引注入 + MCP。
 
 ```powershell
-dsh plugin --profile <profile> add "<路径>\dsh-plugin" --ignore-workspace-root-check
+dsh plugin --profile <profile> add github:youyang145/dsh-plugin-local-kb --ignore-workspace-root-check
 ```
 
 ## 测试
@@ -81,3 +81,4 @@ node 测试/run-checks.mjs   # 12 项端到端检查（在骨架仓库里）
 ## 许可
 
 Apache-2.0。设计文档与手稿在骨架仓库，CC BY 4.0。
+
