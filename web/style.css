@@ -634,3 +634,18 @@ details.more[open] summary::before { content: '▾ '; }
 .restore-mode:hover { border-color: rgba(110,168,254,.6); background: rgba(110,168,254,.06); }
 .restore-mode b { font-size: 13px; color: var(--text); }
 .restore-mode span { font-size: 11px; color: var(--dim); line-height: 1.6; }
+
+/* 配对授权 */
+.auth-code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 34px;
+  letter-spacing: 8px;
+  text-align: center;
+  margin: 10px 0 6px;
+  padding: 10px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: rgba(110, 168, 254, .06);
+  color: var(--text);
+}
+.auth-code.locked { font-size: 16px; letter-spacing: 2px; color: #ff8a8a; }

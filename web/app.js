@@ -118,6 +118,7 @@ function render() {
   }
   bind()
   if (state.view === 'index' && state.indexMode === 'graph') mountGraph()
+  if (state.view === 'mcp') loadAuth()
 }
 
 // ---------- 索引：可缩放矩形树图（面积 = 条数） ----------
@@ -532,6 +533,34 @@ function openRestoreDialog(name) {
 
   showModes()
 }
+async function loadAuth() {
+  const box = document.querySelector('#auth-body')
+  if (!box) return
+  try {
+    const [codeInfo, authInfo] = await Promise.all([api('/api/pair/code'), api('/api/auth')])
+    const locked = codeInfo.locked || authInfo.locked
+    const tokenRows = (authInfo.tokens ?? []).length
+      ? `<table class="mcp-table"><thead><tr><th>编号</th><th>名称</th><th>配对时间</th><th>最近使用</th><th>调用</th><th></th></tr></thead><tbody>${authInfo.tokens.map((tk) => `<tr><td><code>${esc(tk.id)}</code></td><td>${esc(tk.name)}</td><td>${esc(String(tk.createdAt).slice(0, 16).replace('T', ' '))}</td><td>${tk.lastUsedAt ? esc(String(tk.lastUsedAt).slice(0, 16).replace('T', ' ')) : '—'}</td><td>${tk.calls}</td><td><button class="btn small" data-revoke="${esc(tk.id)}">撤销</button></td></tr>`).join('')}</tbody></table>`
+      : '<p class="dim">还没有已配对的客户端。</p>'
+    box.innerHTML = `
+      <div class="auth-code ${locked ? 'locked' : ''}">${locked ? '已锁定' : esc(codeInfo.code)}</div>
+      <p class="dim">${locked ? `尝试过多，锁定到 ${esc(codeInfo.lockedUntil ?? authInfo.lockedUntil ?? '')}` : '把配对码交给要写库的 Agent；重启后配对码和 token 一起失效。'}</p>
+      ${tokenRows}
+      <div class="actions"><button class="btn small" data-act="auth-refresh">刷新</button></div>`
+    box.querySelector('[data-act="auth-refresh"]').onclick = loadAuth
+    box.querySelectorAll('[data-revoke]').forEach((btn) => {
+      btn.onclick = async () => {
+        try {
+          await api('/api/auth/revoke', { method: 'POST', body: JSON.stringify({ tokenId: btn.dataset.revoke }) })
+          await loadAuth()
+        } catch (error) { toast(error.message, true) }
+      }
+    })
+  } catch (error) {
+    box.textContent = `读取授权状态失败：${error.message}`
+  }
+}
+
 function viewMcp() {
   // 直接打开 MCP 页（含刷新后还原）时，自己补一次加载
   if (!state.mcp) {
@@ -543,7 +572,7 @@ function viewMcp() {
   return `
     <div class="settings">
       <h2>MCP</h2>
-      <p class="dim">其他 Agent 用 JSON-RPC 连上来查库；只读，不提供写入。</p>
+      <p class="dim">其他 Agent 用 JSON-RPC 连上来查库；写只到收件箱与待拍板，主库仍由人拍板。</p>
 
       <section class="set-card">
         <header><h3>开关</h3><p class="dim">默认关闭；未启动时「中断」不可点。</p></header>
@@ -558,6 +587,11 @@ function viewMcp() {
         <header><h3>端点</h3><p class="dim">MCP ${esc(info.protocol ?? '')} ｜ ${info.readOnly ? '只读' : esc(`受限写：${info.writeScope ?? '未知范围'}`)}</p></header>
         <div class="meta"><code>${endpoint}</code></div>
         <div class="actions"><button class="btn small" data-act="copy-mcp">复制端点</button></div>
+      </section>
+
+      <section class="set-card" id="auth-card">
+        <header><h3>配对授权</h3><p class="dim">写接口要配对；面板自己的写操作按同源放行。配对码重启即换，token 只存在内存里。</p></header>
+        <div id="auth-body" class="dim">加载中…</div>
       </section>
 
       <section class="set-card">
@@ -1392,6 +1426,8 @@ async function boot() {
 }
 
 boot()
+
+
 
 
 

@@ -20,6 +20,7 @@ import {
 } from './experience.mjs'
 import { updateBlock, removeBlock } from './edit.mjs'
 import { loadSettings, saveSettings } from './settings.mjs'
+import { createAuth } from './auth.mjs'
 import { listProposals, decide, probationItems } from './proposals.mjs'
 import { softSearch } from './consult.mjs'
 import { searchWithWarnings, warningsForApply } from './warnings.mjs'
@@ -109,6 +110,7 @@ function blockView(row, home, withBody) {
 export function createHandler({ home }) {
   initHome(home)
   let db = openDb(layout(home).db)
+  const auth = createAuth(home)
   const reopenDb = () => { db = openDb(layout(home).db) }
 
   return async function handler(req, res) {
@@ -118,7 +120,7 @@ export function createHandler({ home }) {
       res.setHeader('access-control-allow-origin', origin)
       res.setHeader('vary', 'origin')
       res.setHeader('access-control-allow-methods', 'GET,POST,PATCH,DELETE,OPTIONS')
-      res.setHeader('access-control-allow-headers', 'content-type')
+      res.setHeader('access-control-allow-headers', 'content-type, x-kb-token')
     }
     if (req.method === 'OPTIONS') {
       res.writeHead(204)
@@ -127,6 +129,17 @@ export function createHandler({ home }) {
     }
     const url = new URL(req.url, 'http://127.0.0.1')
     const parts = url.pathname.split('/').filter(Boolean)
+
+    // 写接口配对授权：同源面板按 Origin 放行；其他客户端必须带 x-kb-token
+    if (url.pathname.startsWith('/api/') && ['POST', 'PATCH', 'DELETE'].includes(req.method) && url.pathname !== '/api/pair') {
+      const rec = auth.verify(req.headers['x-kb-token'])
+      if (!auth.isPanelOrigin(origin) && !rec) {
+        auth.audit({ event: 'write-denied', method: req.method, path: url.pathname, ip: req.socket?.remoteAddress ?? '', result: '401' })
+        json(res, 401, { ok: false, error: '写接口需要配对：面板 → 配对授权取码，POST /api/pair 换 x-kb-token' })
+        return
+      }
+      auth.audit({ event: 'write', tokenId: rec?.id ?? 'panel', method: req.method, path: url.pathname, result: 'ok' })
+    }
 
     // MCP：其他 Agent 用 JSON-RPC 连上来查库（只读）
     if (url.pathname === '/mcp') {
@@ -159,6 +172,32 @@ export function createHandler({ home }) {
     }
 
     try {
+      // 配对授权：面板读码，第三方用码换 token
+      if (req.method === 'GET' && url.pathname === '/api/pair/code') {
+        json(res, 200, { ok: true, data: auth.codeView() })
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/api/pair') {
+        const body = await readJson(req).catch(() => ({}))
+        const result = auth.pair(body.code, { name: body.name })
+        if (!result.ok) {
+          json(res, result.error.includes('锁定') ? 429 : 401, { ok: false, error: result.error })
+          return
+        }
+        json(res, 200, { ok: true, data: { token: result.token, tokenId: result.tokenId, name: result.tokenName, at: result.at } })
+        return
+      }
+      if (req.method === 'GET' && url.pathname === '/api/auth') {
+        json(res, 200, { ok: true, data: auth.status() })
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/api/auth/revoke') {
+        const body = await readJson(req).catch(() => ({}))
+        const result = auth.revoke(body.tokenId)
+        json(res, result.ok ? 200 : 404, result.ok ? { ok: true, data: result } : { ok: false, error: result.error })
+        return
+      }
+
       // GET /api/mcp-info：面板展示 MCP 端点信息
       if (req.method === 'GET' && url.pathname === '/api/mcp-info') {
         json(res, 200, { ok: true, data: mcpInfo(home) })
@@ -440,6 +479,7 @@ export function startServer({ home = kbHome(), port = 7788, host = '127.0.0.1' }
   const url = `http://${host}:${port}`
   return { server, url, home }
 }
+
 
 
 
