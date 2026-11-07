@@ -166,9 +166,15 @@ export function restoreBackup(home, zipPath, { mode = 'merge', dryRun = false } 
     prune(home)
   }
 
+  const rootPath = path.resolve(home)
   for (const file of manifest.files) {
     const data = entries.get(file.path)
-    const target = path.join(home, ...file.path.split('/'))
+    const target = path.resolve(home, ...file.path.split('/'))
+    // zip slip：manifest 里的路径必须落在库目录内
+    if (target !== rootPath && !target.startsWith(rootPath + path.sep)) {
+      stats.skipped += 1
+      continue
+    }
     const exists = fs.existsSync(target)
     if (exists) {
       const current = fs.readFileSync(target)
@@ -208,6 +214,7 @@ export function restoreBackup(home, zipPath, { mode = 'merge', dryRun = false } 
 
   return { ...stats, manifest: { createdAt: manifest.createdAt, fileCount: manifest.fileCount } }
 }
+
 
 
 

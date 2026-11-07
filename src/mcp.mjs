@@ -1,14 +1,15 @@
 /**
- * 最小可用 MCP 端点（只读 + 连接编号 + 操作留痕）。
+ * 最小可用 MCP 端点（读 + 受限写 + 连接编号 + 操作留痕）。
  *
  * 对应手稿 ⑤ / ⑭：
  * - 其他 Agent 连上来查库，只监听本机；
  * - initialize 时领取连接编号（E-001…），登记它上报的 clientInfo；
  * - 每次调用记一条 activity.jsonl，便于追溯是谁查的；
- * - 不开放写入：写库仍然只能走人审。
+ * - 写只到「待分区」收件箱与「待拍板」队列，主库仍由人审。
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { consult, indexSummary } from './consult.mjs'
 import { planIngest, applyPlan } from './ingest.mjs'
 import { submit } from './proposals.mjs'
@@ -16,10 +17,34 @@ import { counts } from './db.mjs'
 
 const PROTOCOL = '2024-11-05'
 const SPEC_VERSION = '1.0'
-const SERVER = { name: 'local-experience-kb', version: '1.0.0' }
+/** 向上找最近的 package.json：src 和插件 lib/kb 的层级不同，不能写死。 */
+function packageVersion() {
+  let dir = path.dirname(fileURLToPath(import.meta.url))
+  for (let i = 0; i < 5; i += 1) {
+    const file = path.join(dir, 'package.json')
+    if (fs.existsSync(file)) return JSON.parse(fs.readFileSync(file, 'utf8')).version
+    dir = path.dirname(dir)
+  }
+  return '0.0.0'
+}
+const SERVER = { name: 'local-experience-kb', version: packageVersion() }
+const WRITE_SCOPE = '只写「待分区」收件箱与「待拍板」队列，不写主库'
 
 const sessions = new Map()
-let editorSeq = 0
+let editorSeq = null
+
+/** 从历史留痕里续上最大编号，避免重启后 E-001 重复。 */
+function loadEditorSeq(home) {
+  let max = 0
+  try {
+    const file = path.join(home, '_mcp', 'activity.jsonl')
+    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+      const match = /"editor":"E-(\d+)"/.exec(line)
+      if (match) max = Math.max(max, Number(match[1]))
+    }
+  } catch { /* 首次运行没有留痕，从 0 起 */ }
+  return max
+}
 
 const TOOLS = [
   {
@@ -78,7 +103,8 @@ function textResult(text) {
   return { content: [{ type: 'text', text }] }
 }
 
-function newSession(client) {
+function newSession(client, home) {
+  if (editorSeq === null) editorSeq = loadEditorSeq(home)
   const id = `mcp-${Math.random().toString(16).slice(2, 10)}`
   const editor = `E-${String(++editorSeq).padStart(3, '0')}`
   const session = {
@@ -190,7 +216,7 @@ export async function handleMcp(body, db, { home, sessionId } = {}) {
   }
 
   if (method === 'initialize') {
-    const session = newSession(params?.clientInfo)
+    const session = newSession(params?.clientInfo, home)
     const summary = indexSummary(db, { topDomains: 5, titlesPerDomain: 2 }).text
     return {
       status: 200,
@@ -200,12 +226,14 @@ export async function handleMcp(body, db, { home, sessionId } = {}) {
         capabilities: { tools: { listChanged: false } },
         serverInfo: SERVER,
         specVersion: SPEC_VERSION,
+        readOnly: false,
+        writeScope: WRITE_SCOPE,
         instructions: [
           '本地经验库。用法：',
           '1. 技术问题、排错、需要历史经验时先调 kb_consult(query)；闲聊不查；零命中就用自己的知识答，并说明不是来自本库。',
           '2. 想知道库的结构，调 kb_index()；索引摘要也会随本说明给出。',
           '3. 返回的是简介，不是全文；要下结论前请读正文，或向用户要。',
-          '4. 新材料用 kb_stage 放进「待分区」收件箱——只进收件箱，不写主库；不要说自己“已入库”。',
+          `4. 写入是受限的：${WRITE_SCOPE}。新材料用 kb_stage 进收件箱，不要说自己“已入库”。`,
           '5. 用了经验用 kb_record 记账；想改结论用 kb_recommend + 理由，只进「待拍板」，由人决定。',
           '6. 主库的增删改、转正、推翻都只能由人做；不要直接改文件。',
           '7. 后续请求带上 initialize 返回的 Mcp-Session-Id 头，否则会被拒绝。',
@@ -290,10 +318,13 @@ export function mcpInfo(home) {
     specVersion: SPEC_VERSION,
     server: SERVER,
     tools: TOOLS,
-    readOnly: true,
+    readOnly: false,
+    writeScope: WRITE_SCOPE,
     sessions: [...sessions.values()],
   }
 }
+
+
 
 
 

@@ -59,7 +59,8 @@ async function readJson(req) {
 function serveStatic(res, pathname) {
   const file = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '')
   const abs = path.join(webDir, file)
-  if (!abs.startsWith(webDir)) { res.writeHead(403).end('forbidden'); return true }
+  const root = webDir + path.sep
+  if (abs !== webDir && !abs.startsWith(root)) { res.writeHead(403).end('forbidden'); return true }
   if (!fs.existsSync(abs)) return false
   res.writeHead(200, { 'content-type': MIME[path.extname(abs)] ?? 'application/octet-stream', 'cache-control': 'no-store' })
   fs.createReadStream(abs).pipe(res)
@@ -439,6 +440,7 @@ export function startServer({ home = kbHome(), port = 7788, host = '127.0.0.1' }
   const url = `http://${host}:${port}`
   return { server, url, home }
 }
+
 
 
 
