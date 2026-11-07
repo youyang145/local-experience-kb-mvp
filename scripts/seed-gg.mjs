@@ -4,7 +4,7 @@
  * 原则：只写能核实的（官方站点/论坛链接存在的事实），具体步骤一律标【待实测】。
  * 目的是验证"知识块按类型拆开 + 目录"在真实主题上顺不顺，不是冒充完整手册。
  *
- *   node scripts/seed-gg.mjs --home F:\大项目开发\_test-kb-m1
+ *   node scripts/seed-gg.mjs --home "%USERPROFILE%\kb-seed"
  */
 import { initHome, layout } from '../src/config.mjs'
 import { openDb, upsertBlock } from '../src/db.mjs'
@@ -181,3 +181,4 @@ for (const [index, input] of blocks.entries()) {
 }
 db.close()
 console.log(`已写入 ${created} 条 GameGuardian 骨架知识到 ${home}`)
+

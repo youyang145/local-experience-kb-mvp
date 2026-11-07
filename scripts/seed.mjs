@@ -1,7 +1,7 @@
 /**
  * 演示/压测用的种子脚本：造 N 条笔记，走的是和 CLI 完全相同的写入路径。
  *
- *   node scripts/seed.mjs --count 100 --home F:\大项目开发\_test-kb-r0
+ *   node scripts/seed.mjs --count 100 --home "%USERPROFILE%\kb-seed"
  */
 import { initHome, layout } from '../src/config.mjs'
 import { openDb, upsertBlock } from '../src/db.mjs'
@@ -39,3 +39,4 @@ for (let i = 0; i < count; i += 1) {
 }
 db.close()
 console.log(`已写入 ${count} 条到 ${home}`)
+

@@ -1,14 +1,15 @@
 /**
  * 知识库根目录与目录布局（KB0 的一部分）。
  *
- * 数据与代码分离：默认放在 F:\大项目开发\dsh插件本地知识库\kb-data，可用 KB_HOME 覆盖。
+ * 数据与代码分离：默认放在 ~/local-experience-kb，可用 KB_HOME 覆盖。
  * 手稿 ⑩ 原话是"内置于插件文件夹下"，但插件会被 pnpm 重装，数据放里面会丢，
  * 所以 R0 起就分离（冲突登记 C-005）。
  */
 import path from 'node:path'
 import fs from 'node:fs'
+import os from 'node:os'
 
-export const DEFAULT_HOME = 'F:\\大项目开发\\dsh插件本地知识库\\kb-data'
+export const DEFAULT_HOME = path.join(os.homedir(), 'local-experience-kb')
 
 export function kbHome() {
   return process.env.KB_HOME || DEFAULT_HOME
