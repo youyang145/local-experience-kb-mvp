@@ -1,6 +1,6 @@
 {
   "name": "dsh-kb",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "本地知识库插件（R0）：存储、寻址、收录、检索、经验记账、批量共判",
   "type": "module",
@@ -18,4 +18,5 @@
     "serve": "node bin/kb.mjs serve --port 7788"
   }
 }
+
 

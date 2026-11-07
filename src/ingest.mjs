@@ -55,7 +55,9 @@ export function chunkText(text, { max = 1200 } = {}) {
   return out
 }
 
-function chunkTitle(chunk, index, fallback) {
+function chunkTitle(chunk, index, fallback, total) {
+  // 单块投稿时尊重调用方传的标题；正文标题只作兜底
+  if (total === 1 && fallback) return fallback.trim().slice(0, 80)
   const heading = chunk.match(/^#{1,3}\s+(.+)$/m)
   if (heading) return heading[1].trim().slice(0, 80)
   const firstLine = (chunk.split('\n').find((l) => l.trim()) ?? '').replace(/^[#>*\-\s]+/, '').trim()
@@ -93,9 +95,11 @@ export function suggestDomains(db, text, { top = 3 } = {}) {
 
 /** 出计划：分块 + 每块的候选分区，不写库。 */
 export function planIngest(db, { title, text }) {
-  const chunks = chunkText(text).map((body, index) => ({
+  const bodies = chunkText(text)
+  const total = bodies.length
+  const chunks = bodies.map((body, index) => ({
     index,
-    title: chunkTitle(body, index, title),
+    title: chunkTitle(body, index, title, total),
     body,
     suggestions: suggestDomains(db, body),
     chosen: '',

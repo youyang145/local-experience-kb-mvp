@@ -555,7 +555,7 @@ function viewMcp() {
       </section>
 
       <section class="set-card">
-        <header><h3>端点</h3><p class="dim">MCP ${esc(info.protocol ?? '')} ｜ ${info.readOnly ? '只读' : '可写'}</p></header>
+        <header><h3>端点</h3><p class="dim">MCP ${esc(info.protocol ?? '')} ｜ ${info.readOnly ? '只读' : esc(`受限写：${info.writeScope ?? '未知范围'}`)}</p></header>
         <div class="meta"><code>${endpoint}</code></div>
         <div class="actions"><button class="btn small" data-act="copy-mcp">复制端点</button></div>
       </section>

@@ -67,7 +67,7 @@ node 测试/run-checks.mjs   # 12 项端到端检查（在骨架仓库里）
 ## 与骨架的关系
 
 - 行为是否对齐，看骨架仓库的 [一致性清单](https://github.com/youyang145/local-experience-kb/blob/main/docs/一致性清单.md)；
-- 接口契约看 [MCP 工具契约](https://github.com/youyang145/local-experience-kb/blob/main/docs/规范/MCP工具契约.md)；
+- 接口契约看 [MCP 工具契约](https://github.com/youyang145/local-experience-kb/blob/main/docs/spec/mcp-tool-contract.md)；
 - 用法看 [给 AI 的用法](https://github.com/youyang145/local-experience-kb/blob/main/docs/给AI的用法.md)；`n- 三个库怎么分工、改完怎么同步：[联动与同步规矩](https://github.com/youyang145/local-experience-kb/blob/main/docs/联动与同步规矩.md)；`n- 作者与 AI 的分工：[人机协作声明](https://github.com/youyang145/local-experience-kb#人机协作声明)。
 
 ## 状态与参与
