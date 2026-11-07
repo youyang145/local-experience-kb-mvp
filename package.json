@@ -1,23 +1,24 @@
 {
-  "name": "dsh-kb",
-  "version": "0.2.0",
+  "name": "local-experience-kb-mvp",
+  "version": "0.2.1",
   "private": true,
-  "description": "本地知识库插件（R0）：存储、寻址、收录、检索、经验记账、批量共判",
+  "description": "本地经验库的参考实现（MVP）：Markdown 块 + 可重建索引 + 检索/经验记账/提案 + 本地面板 + MCP + 写接口配对授权",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "bin": {
     "kb": "bin/kb.mjs"
   },
-  "main": "src/index.mjs",
   "files": [
     "bin/kb.mjs",
-    "src/**/*.mjs"
+    "src/**/*.mjs",
+    "web/**"
   ],
   "scripts": {
     "test": "node --test test/",
-    "eval": "node bin/kb.mjs eval",
-    "serve": "node bin/kb.mjs serve --port 7788"
-  }
+    "serve": "node bin/kb.mjs serve --port 7788",
+    "demo": "node scripts/demo-e2e.mjs"
+  },
+  "license": "Apache-2.0"
 }
-
-
-
