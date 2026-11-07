@@ -1,0 +1,25 @@
+{
+  "name": "local-experience-kb-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "本地经验库的参考实现（MVP）：Markdown 块 + 可重建索引 + 检索/经验记账/提案 + 本地面板 + MCP",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "kb": "bin/kb.mjs"
+  },
+  "files": [
+    "bin/kb.mjs",
+    "src/**/*.mjs",
+    "web/**",
+    "dsh-plugin/**"
+  ],
+  "scripts": {
+    "test": "node --test test/",
+    "serve": "node bin/kb.mjs serve --port 7788",
+    "demo": "node scripts/demo-e2e.mjs"
+  },
+  "license": "Apache-2.0"
+}

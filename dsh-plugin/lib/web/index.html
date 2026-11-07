@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>本地知识库</title>
+  <script>if (location.search.indexOf("embed=1") !== -1) document.documentElement.classList.add("embed")</script>
+  <link rel="stylesheet" href="/style.css?v=20261101" />
+</head>
+<body>
+  <div class="stage">
+    <div class="window" id="app">
+      <header class="titlebar">
+        <div class="brand">
+          <span class="dot"></span>
+          <span class="name">本地知识库</span>
+          <span class="hint" id="home-hint"></span>
+        </div>
+        <div class="chips" id="chips"></div>
+        <button class="ghost" id="btn-proposals" title="待拍板的经验提议">待拍板 <b id="proposal-count">0</b></button>
+      </header>
+
+      <div class="body">
+        <nav class="sidebar" id="nav">
+          <button data-view="kb" class="active">知识库</button>
+          <button data-view="exp">经验块</button>
+          <button data-view="index">索引</button>
+          <button data-view="mcp">MCP</button>
+          <button data-view="settings">设置</button>
+          <div class="spacer"></div>
+          <div class="tiny" id="data-home"></div>
+        </nav>
+
+        <main class="main" id="main"></main>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="modal" hidden>
+    <div class="modal">
+      <header><span id="modal-title">待拍板</span><button class="ghost" id="modal-close">关闭</button></header>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <div class="palette-mask" id="palette" hidden>
+    <div class="palette" role="dialog" aria-modal="true" aria-label="命令面板">
+      <input id="palette-input" type="text" placeholder="搜索知识、经验，或输入命令…（Ctrl+K）" autocomplete="off" />
+      <div class="palette-list" id="palette-list" role="listbox"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js?v=20261101"></script>
+</body>
+</html>
+
+
+
+
+

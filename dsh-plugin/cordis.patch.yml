@@ -1,0 +1,6 @@
+- insert:
+    - id: local-kb
+      name: 'dsh-plugin-local-kb'
+      config:
+        home: 'F:\大项目开发\dsh插件本地知识库\kb-data'
+

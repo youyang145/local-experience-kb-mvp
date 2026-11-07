@@ -1,0 +1,40 @@
+{
+  "name": "dsh-plugin-local-kb",
+  "version": "0.14.0",
+  "description": "本地知识库插件（MVP）：kb_consult / kb_index / kb_stage；库逻辑与面板网页打包在 lib，写只写收件箱。",
+  "type": "module",
+  "main": "index.mjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "index.mjs",
+    "widget.js",
+    "lib/**/*.mjs",
+    "lib/web/**",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
