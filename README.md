@@ -70,6 +70,14 @@ node 测试/run-checks.mjs   # 12 项端到端检查（在骨架仓库里）
 - 接口契约看 [MCP 工具契约](https://github.com/youyang145/local-experience-kb/blob/main/docs/规范/MCP工具契约.md)；
 - 用法看 [给 AI 的用法](https://github.com/youyang145/local-experience-kb/blob/main/docs/给AI的用法.md)。
 
+## 状态与参与
+
+作者高三，平时上课，**周末才有空**，回得慢但都会看。
+
+- 可以提 Issue：bug、想法都行，周末集中看；
+- PR 暂时不接：协作流程还没走顺，等我摸熟再开；
+- 这是 MVP：接口和字段还会变，升级前先备份。
+
 ## 许可
 
 Apache-2.0。设计文档与手稿在骨架仓库，CC BY 4.0。
