@@ -1,50 +1,77 @@
-# dsh-plugin-local-kb（MVP）
+# DSH 适配器 · dsh-plugin-local-kb
 
-给 DSH 模型三个工具，库逻辑打包在 `lib/kb/`，不依赖外部路径。
+> **骨架（设计与规范）**：[youyang145/local-experience-kb](https://github.com/youyang145/local-experience-kb)
+> **参考实现（核心库 + 面板）**：[youyang145/local-experience-kb-mvp](https://github.com/youyang145/local-experience-kb-mvp)
+> 本目录是它的 **DeepSeek Harness 宿主适配器**：把库接进 DSH 的工具、系统提示和右下角挂件。
+
+## 它做了什么
+
+| 能力 | 说明 |
+|---|---|
+| 5 个工具 | `kb_consult` / `kb_index` / `kb_stage` / `kb_record` / `kb_recommend` |
+| 每轮索引 | `systemPrompt.section` 注入分区目录与召回规则，压缩不会盖掉 |
+| 右下角挂件 | K 按钮 → 可拖动/缩放的面板小窗；待拍板入口 |
+| 面板服务 | 懒启动 7788，不随 DSH 启动占端口 |
+| MCP | 面板里的开关，`POST /mcp`，四个工具 + 连接编号 + 留痕 |
+
+## 工具边界
 
 | 工具 | 干什么 | 写不写库 |
 |---|---|---|
 | `kb_consult` | 先判要不要查（闲聊跳过），返回索引摘要 + 命中简介 + 反例警示 | 不写 |
-| `kb_index` | 只看分区目录：分区 + 条数 + 每区两条标题 | 不写 |
-| `kb_stage` | 把材料分块放进「待分区」收件箱，附候选分区；一次最多 5 块 | 只写收件箱，不写主库 |
+| `kb_index` | 只看分区目录 | 不写 |
+| `kb_stage` | 材料分块放进「待分区」收件箱，最多 5 块 | 只写收件箱 |
+| `kb_record` | 套用/复现记账（used / succeeded / occurrences） | 只改计数 |
+| `kb_recommend` | 建议转正/推翻，必须带理由 | 只进「待拍板」，人决定 |
 
 ## 安装
 
+从 MVP 仓库安装：
+
 ```powershell
-dsh plugin --profile <你的 profile> add "F:\大项目开发\dsh插件本地知识库\plugin-mvp" `
-  --ignore-workspace-root-check `
-  --store-dir "F:\大项目开发\_归档\pnpm-store"
+dsh plugin --profile <你的 profile> add "https://github.com/youyang145/local-experience-kb-mvp.git" --ignore-workspace-root-check
 ```
 
-- `--store-dir` 必须指到可写目录，否则 pnpm 会去写默认 store 然后报错；
-- 装完 `dsh --profile <你的 profile> --dump-config` 里能看到 `id: local-kb`。
+或者本地目录：
 
-`cordis.patch.yml` 只需要一个 `home`（知识库根目录，含 `index.db`）。
+```powershell
+dsh plugin --profile <你的 profile> add "<仓库>\dsh-plugin" `
+  --ignore-workspace-root-check `
+  --store-dir "<可写目录>"
+```
+
+- `--store-dir` 指向可写目录，否则 pnpm 写默认 store 会报错；
+- 装完 `dsh --profile <你的 profile> --dump-config` 里能看到 `id: local-kb`；
+- 重启 DSH 生效。
+
+## 配置
+
+`cordis.patch.yml` 只需要一个 `home`（库根目录，含 `index.db`）：
+
+```yaml
+- insert:
+    - id: local-kb
+      name: 'dsh-plugin-local-kb'
+      config:
+        home: 'F:\path\to\kb-data'
+```
 
 ## 本地验证
 
 ```bash
-node harness.mjs
+node harness.mjs     # 假 ctx，跑五个工具
 ```
-
-不装 DSH，用假 ctx 跑三个工具：查库、目录、放进待分区（临时库）。
 
 ## 打包
 
 ```bash
-npm pack
+npm pack             # files 已包含 lib/**、lib/web/**、widget.js
 ```
 
-`files` 里已包含 `lib/**/*.mjs`；如果 npm 缓存不可写，加 `--cache <可写目录>`。
-
-## 设计约束
-
-- **不依赖 `@deepseek-ai/dsh-tools`**：工具描述直接用注册表认的 JSON Schema 形状；
-- **写只写收件箱**：AI 不能直接进主库，人再把块挪到正式分区；
-- **库逻辑随插件打包**：`lib/kb` 是 `dsh-kb/src` 的拷贝，发布时同步一次（当前 v0.3.0）。
+`lib/kb` 是核心库的打包副本，随插件发布同步一次；不是第二套维护。
 
 ## 限制
 
-- 没有 client 半端，面板仍是独立的 7788 服务；
-- 还没做到"每轮自动注入索引"，现在是模型主动调 `kb_consult` / `kb_index`；
-- `kb_add`（直接写正式分区）故意没做。
+- 面板仍是独立进程（7788），懒启动；
+- 自动索引只到"目录 + 召回规则"，正文仍要 `kb_consult`；
+- 主库写入只由人在面板操作，工具没有直接写主库的权限。
