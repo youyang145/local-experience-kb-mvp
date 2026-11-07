@@ -635,14 +635,22 @@ function cmdSettings(positional, flags) {
   return 0
 }
 
+function printWarnings(warnings) {
+  if (!warnings?.length) return
+  console.log('提示（不影响提交，由人判断）：')
+  for (const line of warnings) console.log(`  - ${line}`)
+}
+
 function reportSubmit(result) {
   if (result.status === 'off') { console.log(result.reason); return 0 }
-  if (result.status === 'skipped') { console.log(`这次不打扰：${result.reason}`); return 0 }
+  if (result.status === 'skipped') { console.log(`这次不打扰：${result.reason}`); printWarnings(result.warnings); return 0 }
   if (result.status === 'pending') {
     console.log(`已提案 #${result.seq}，等你拍板：kb exp proposals`)
+    printWarnings(result.warnings)
     return 0
   }
   console.log(`已进小经验区：${result.id}`)
+  printWarnings(result.warnings)
   if (result.notify?.notify) console.log(`该看一批了：${result.notify.reason}（kb exp inbox）`)
   return 0
 }
@@ -727,6 +735,7 @@ function cmdExpDecide(positional, flags) {
   })
   if (res.status === 'rejected') console.log(`已否决 #${seq}（留档）`)
   else console.log(`已接受 #${seq} → ${res.id}\n${res.claim}`)
+  printWarnings(res.warnings)
   return 0
 }
 

@@ -16,7 +16,28 @@ import { makeExperience, merge, transplant, refute, promote, normalizeExp } from
 import { writeBlockFile, readBlockFile } from './blocks.mjs'
 import { upsertBlock } from './db.mjs'
 
-export const ACTIONS = ['new', 'merge', 'transplant', 'refute']
+export const ACTIONS = ['new', 'merge', 'transplant', 'refute', 'promote']
+
+/**
+ * 默认门槛（D-039）：只管"能不能提名"，**不拦提交**。
+ * 不满足时在返回值里带 warnings，让人拍板时看到；宿主可收紧，放宽要留审计。
+ */
+function gateWarnings(db, action, payload) {
+  const warnings = []
+  if (action !== 'promote' && action !== 'refute') return warnings
+  const row = db.prepare('SELECT * FROM blocks WHERE id = ?').get(payload.id)
+  if (!row) return [`找不到目标：${payload.id}`]
+  const exp = normalizeExp(readBlockFile(row.path))
+  const acc = exp.accounting ?? {}
+  if (action === 'promote') {
+    if ((acc.succeeded ?? 0) < 2) warnings.push(`成功次数 ${acc.succeeded ?? 0} < 2（默认门槛）`)
+    if ((acc.occurrences ?? 0) < 2) warnings.push(`复现次数 ${acc.occurrences ?? 0} < 2（默认门槛）`)
+    if (!exp.scope || !exp.limits) warnings.push('scope/limits 没写全，说不清边界')
+  } else if ((acc.occurrences ?? 0) < 2 && !payload.note) {
+    warnings.push('只复现过一次，且没写反例说明')
+  }
+  return warnings
+}
 
 function insertProposal(db, { action, mode, status, payload, reason, proposedClaim }) {
   const info = db.prepare(`INSERT INTO proposals(action, mode, status, payload, reason, proposed_claim, created_at)
@@ -67,16 +88,18 @@ export function submit(db, home, { action, payload, reason = '', proposedClaim =
     return { status: 'off', reason: '经验生成已关闭；可用 kb settings set experience.mode review 打开' }
   }
 
+  const warnings = gateWarnings(db, action, payload)
+
   // 推翻与转正永远要人审
   const effectiveMode = (action === 'refute' || action === 'promote') ? 'review' : mode
 
   if (effectiveMode === 'review') {
     const claimForGate = payload.claim ?? payload.id ?? ''
     const gate = checkReviewGate(home, settings, `${action}:${claimForGate}`)
-    if (!gate.allowed) return { status: 'skipped', reason: gate.reason }
+    if (!gate.allowed) return { status: 'skipped', reason: gate.reason, warnings }
     const seq = insertProposal(db, { action, mode: 'review', status: 'pending', payload, reason, proposedClaim })
     noteProposal(home, gate.state, gate.key)
-    return { status: 'pending', seq }
+    return { status: 'pending', seq, warnings }
   }
 
   // 免审：直接进小经验区
@@ -93,7 +116,7 @@ export function submit(db, home, { action, payload, reason = '', proposedClaim =
   const exp = buildExperience(db, home, action, payload)
   const seq = insertProposal(db, { action, mode: 'auto', status: 'auto_applied', payload, reason, proposedClaim })
   noteAutoApplied(home)
-  return { status: 'applied', seq, id: exp.id, notify: shouldNotify(home, settings) }
+  return { status: 'applied', seq, id: exp.id, notify: shouldNotify(home, settings), warnings }
 }
 
 export function listProposals(db, { status = 'pending', limit = 20 } = {}) {
@@ -119,11 +142,12 @@ export function decide(db, home, seq, { yes, note = '', claim } = {}) {
 
   const payload = JSON.parse(row.payload)
   if (claim) payload.claim = claim
+  const warnings = gateWarnings(db, row.action, payload)
   const exp = buildExperience(db, home, row.action, payload)
   const final = row.action === 'refute' ? normalizeExp(exp) : row.action === 'promote' ? normalizeExp(exp) : promote(db, home, exp.id)
   db.prepare("UPDATE proposals SET status='accepted', decided_at=?, decided_by='human', decision_note=? WHERE seq=?")
     .run(new Date().toISOString(), note, seq)
-  return { status: 'accepted', id: final.id, claim: final.claim, proposed_claim: row.proposed_claim || '' }
+  return { status: 'accepted', id: final.id, claim: final.claim, proposed_claim: row.proposed_claim || '', warnings }
 }
 
 /** 小经验区里还没转正的经验（按时间倒序）。 */
