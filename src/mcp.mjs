@@ -237,6 +237,7 @@ export async function handleMcp(body, db, { home, sessionId } = {}) {
           '5. 用了经验用 kb_record 记账；想改结论用 kb_recommend + 理由，只进「待拍板」，由人决定。',
           '6. 主库的增删改、转正、推翻都只能由人做；不要直接改文件。',
           '7. 后续请求带上 initialize 返回的 Mcp-Session-Id 头，否则会被拒绝。',
+          '8. 自检：连上后先调 kb_index()，能返回块数就是连上了；块数为 0 只说明库是空的，不是没连上。缺参数或缺会话头会返回 -32602。',
           `你的连接编号：${session.editor}（已记录 clientInfo：${session.client}）。`,
           '库的目录：',
           summary,
@@ -323,6 +324,7 @@ export function mcpInfo(home) {
     sessions: [...sessions.values()],
   }
 }
+
 
 
 

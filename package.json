@@ -1,6 +1,6 @@
 {
   "name": "local-experience-kb-mvp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "本地经验库的参考实现（MVP）：Markdown 块 + 可重建索引 + 检索/经验记账/提案 + 本地面板 + MCP + 写接口配对授权",
   "type": "module",
