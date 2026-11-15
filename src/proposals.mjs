@@ -22,7 +22,7 @@ export const ACTIONS = ['new', 'merge', 'transplant', 'refute', 'promote']
  * 默认门槛（D-039）：只管"能不能提名"，**不拦提交**。
  * 不满足时在返回值里带 warnings，让人拍板时看到；宿主可收紧，放宽要留审计。
  */
-function gateWarnings(db, action, payload) {
+export function gateWarnings(db, action, payload) {
   const warnings = []
   if (action !== 'promote' && action !== 'refute') return warnings
   const row = db.prepare('SELECT * FROM blocks WHERE id = ?').get(payload.id)
@@ -174,4 +174,5 @@ export function card(row, index) {
   lines.push(`   [要] kb exp decide ${row.seq} --yes   [改] 加 --claim "改后的判断"   [不要] --no`)
   return lines.join('\n')
 }
+
 

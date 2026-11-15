@@ -19,7 +19,7 @@ import {
   orphanExperiences,
 } from './experience.mjs'
 import { repair } from './mapping.mjs'
-import { submit, listProposals, decide as decideProposal, probationItems, card } from './proposals.mjs'
+import { submit, listProposals, decide as decideProposal, probationItems, card, gateWarnings } from './proposals.mjs'
 import { loadSettings, saveSettings, shouldNotify, ackNotification } from './settings.mjs'
 import { startServer } from './server.mjs'
 import { createBackup, listBackups, restoreBackup } from './backup.mjs'
@@ -350,6 +350,14 @@ function cmdIngest(flags, positional) {
   return 0
 }
 
+function assertFlags(flags, allowed, commandName) {
+  const unknown = Object.keys(flags).filter((key) => !allowed.includes(key))
+  if (!unknown.length) return
+  const names = unknown.map((key) => `--${key}`).join(', ')
+  const known = allowed.length ? allowed.map((key) => `--${key}`).join(' / ') : '（不接受参数）'
+  throw new Error(`未知参数 ${names}；${commandName} 只认 ${known}`)
+}
+
 function parseSeqList(value, total) {
   if (value === true || value === 'all') return Array.from({ length: total }, (_, i) => i + 1)
   return String(value).split(',').map((s) => Number.parseInt(s.trim(), 10)).filter((n) => Number.isInteger(n))
@@ -428,6 +436,7 @@ function cmdExpApply(positional, flags) {
   const { home, db } = open()
   const id = positional[0]
   if (!id) throw new Error('用法：kb exp apply <id> [--result success|failure] [--method self|human|signal]')
+  assertFlags(flags, ['result', 'method', 'note'], 'kb exp apply')
   const result = ['success', 'failure', 'unknown'].includes(String(flags.result)) ? String(flags.result) : 'unknown'
   const method = ['self', 'human', 'signal'].includes(String(flags.method)) ? String(flags.method) : 'self'
   // 套用前先看有没有反例（D-031：警示只在"要踩坑的那一刻"出现）
@@ -525,12 +534,18 @@ function cmdExpPin(positional, flags) {
   return 0
 }
 
-function cmdExpPromote(positional) {
+function cmdExpPromote(positional, flags) {
   const { home, db } = open()
   const id = positional[0]
   if (!id) throw new Error('用法：kb exp promote <id>')
+  assertFlags(flags, [], 'kb exp promote')
+  const warnings = gateWarnings(db, 'promote', { id })
   const exp = promote(db, home, id)
   console.log(`已转正进主库：${exp.claim}`)
+  if (warnings.length) {
+    console.log('提示（已按你的决定执行）：')
+    for (const warning of warnings) console.log(`  - ${warning}`)
+  }
   return 0
 }
 
@@ -819,8 +834,16 @@ function cmdRestore(positional, flags) {
   initHome(home)
   const source = positional[0]
   if (!source) throw new Error('用法：kb restore <备份.zip> [--merge] [--dry-run]')
+  assertFlags(flags, ['merge', 'dry-run'], 'kb restore')
   const mode = flags.merge ? 'merge' : 'overwrite'
-  const result = restoreBackup(home, path.resolve(source), { mode, dryRun: Boolean(flags['dry-run']) })
+  let result
+  try {
+    result = restoreBackup(home, path.resolve(source), { mode, dryRun: Boolean(flags['dry-run']) })
+  } catch (error) {
+    if (error.code === 'ENOENT') throw new Error(`备份文件不存在：${path.resolve(source)}`)
+    if (/not a zip|invalid/i.test(error.message)) throw new Error(`这不是有效的备份包：${path.resolve(source)}`)
+    throw error
+  }
   const tag = flags['dry-run'] ? '（演练，未写盘）' : ''
   console.log(`恢复${tag}：模式 ${result.mode}`)
   console.log(`新建 ${result.created}，覆盖 ${result.updated}，相同跳过 ${result.skipped}，删除 ${result.removed}`)
@@ -943,7 +966,7 @@ export async function run(argv) {
         case 'refute': return cmdExpRefute(parsed.positional, parsed.flags)
         case 'vote': return cmdExpVote(parsed.positional)
         case 'pin': return cmdExpPin(parsed.positional, parsed.flags)
-        case 'promote': return cmdExpPromote(parsed.positional)
+        case 'promote': return cmdExpPromote(parsed.positional, parsed.flags)
         case 'show': return cmdExpShow(parsed.positional)
         case 'list': return cmdExpList(parsed.flags)
         case 'refuted': return cmdExpRefuted(parsed.flags)
@@ -961,6 +984,8 @@ export async function run(argv) {
       throw new Error(`未知命令：${command}（看 kb help）`)
   }
 }
+
+
 
 
 

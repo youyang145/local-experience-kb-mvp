@@ -60,7 +60,7 @@ dsh plugin --profile <profile> add github:youyang145/dsh-plugin-local-kb --ignor
 ## 测试
 
 ```bash
-node --test test/          # 40 项库测试
+node --test test/          # 45 项库测试
 node 测试/run-checks.mjs   # 12 项端到端检查（在骨架仓库里）
 ```
 

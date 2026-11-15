@@ -47,7 +47,8 @@ test('查库：有索引摘要，整句不命中时拆词兜底', () => {
   const { dir, cleanup } = tempHome()
   try {
     const db = seed(dir)
-    assert.match(indexSummary(db).text, /工具\/GG修改器（1）/)
+    // 只断言"该分区下 1 条"，不绑展示格式（知识/经验分列会变）
+    assert.match(indexSummary(db).text, /工具\/GG修改器（1[｜）]/)
 
     const result = consult(db, 'GG 修改器 搜索不到数值怎么办')
     assert.equal(result.consult, true)
