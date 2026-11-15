@@ -25,6 +25,43 @@ function toast(message, isError = false) {
   toastTimer = setTimeout(() => node.classList.remove('show'), 2400)
 }
 
+/**
+ * 复制文本：优先 Clipboard API，失败时退回 textarea + execCommand。
+ * 都失败就选中目标文本，提示按 Ctrl+C，绝不谎报"已复制"。
+ */
+async function copyText(text, okMessage, selectSelector) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      toast(okMessage)
+      return
+    }
+  } catch { /* 落到兜底 */ }
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.top = '-1000px'
+  document.body.appendChild(area)
+  area.focus()
+  area.select()
+  let ok = false
+  try { ok = document.execCommand('copy') } catch { ok = false }
+  document.body.removeChild(area)
+  if (ok) { toast(okMessage); return }
+  const target = selectSelector ? document.querySelector(selectSelector) : null
+  if (target) {
+    const range = document.createRange()
+    range.selectNodeContents(target)
+    const selection = window.getSelection()
+    selection.removeAllRanges()
+    selection.addRange(range)
+    toast('浏览器不允许自动复制，已选中，按 Ctrl+C', true)
+    return
+  }
+  toast(`复制失败，请手动复制：${text}`, true)
+}
+
 // ---------- 数据 ----------
 
 async function loadOverview() {
@@ -568,7 +605,7 @@ function viewMcp() {
   }
   const info = state.mcp ?? {}
   const tools = info.tools ?? []
-  const endpoint = 'http://127.0.0.1:7788/mcp'
+  const endpoint = `${location.origin}/mcp`
   return `
     <div class="settings">
       <h2>MCP</h2>
@@ -585,7 +622,7 @@ function viewMcp() {
 
       <section class="set-card">
         <header><h3>端点</h3><p class="dim">MCP ${esc(info.protocol ?? '')} ｜ ${info.readOnly ? '只读' : esc(`受限写：${info.writeScope ?? '未知范围'}`)}</p></header>
-        <div class="meta"><code>${endpoint}</code></div>
+        <div class="meta"><code id="mcp-endpoint">${endpoint}</code></div>
         <div class="actions"><button class="btn small" data-act="copy-mcp">复制端点</button></div>
       </section>
 
@@ -917,6 +954,16 @@ function bind() {
     }
   })
 
+  // 图谱节点超过上限时退化成卡片列表，这里要能点开
+  document.querySelectorAll('.graph-card[data-block-id]').forEach((node) => {
+    node.onclick = async () => {
+      state.view = 'kb'
+      state.detail = null
+      await loadBlocks()
+      await openBlock(node.dataset.blockId)
+    }
+  })
+
   document.querySelectorAll('[data-act]').forEach((btn) => {
     btn.onclick = async () => {
       const act = btn.dataset.act
@@ -942,12 +989,10 @@ function bind() {
           return toast(enable ? 'MCP 已启动' : 'MCP 已中断')
         }
         if (act === 'copy-mcp') {
-          try { await navigator.clipboard.writeText('http://127.0.0.1:7788/mcp') } catch { /* 忽略 */ }
-          return toast('MCP 端点已复制')
+          return copyText(`${location.origin}/mcp`, 'MCP 端点已复制', '#mcp-endpoint')
         }
         if (act === 'copy-id') {
-          try { await navigator.clipboard.writeText(btn.dataset.id) } catch { /* 剪贴板不可用时忽略 */ }
-          return toast(`已复制 ${btn.dataset.id}`)
+          return copyText(btn.dataset.id, `已复制 ${btn.dataset.id}`)
         }
         if (act === 'delete-id') {
           const title = btn.dataset.title || btn.dataset.id
