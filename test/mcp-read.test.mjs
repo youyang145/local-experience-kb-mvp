@@ -29,6 +29,10 @@ test('MCP kb_read：按 id 读正文，最多 3 条', async () => {
     )
     const sid = init.headers['Mcp-Session-Id']
     assert.ok(sid)
+    const instructions = init.body.result.instructions
+    assert.match(instructions, /两级/)
+    assert.match(instructions, /claim/)
+    assert.match(instructions, /kb_read/)
 
     const list = await handleMcp({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, db, { home })
     assert.ok(list.body.result.tools.some((tool) => tool.name === 'kb_read'))
