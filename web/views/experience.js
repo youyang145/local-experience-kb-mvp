@@ -60,6 +60,7 @@ export function expDetailHtml(e) {
         <button class="btn small" data-act="merge">融合</button>
         <button class="btn small" data-act="transplant">跨域派生</button>
         <button class="btn small danger" data-act="refute">推翻</button>
+        <button class="btn small" data-act="move" data-id="${esc(e.id)}" data-domain="${esc(e.domain)}">移动分区</button>
         <button class="btn small danger" data-act="delete">删除</button>
       </div>
     </details>`

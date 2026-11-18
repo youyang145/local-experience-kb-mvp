@@ -18,7 +18,7 @@ import {
   listExperiences, applyUse, recordOccurrence, refine, vote, pin, promote,
   refute, merge, transplant, priority, explain, normalizeExp, makeExperience,
 } from './experience.mjs'
-import { updateBlock, removeBlock } from './edit.mjs'
+import { updateBlock, removeBlock, moveBlock } from './edit.mjs'
 import { loadSettings, saveSettings } from './settings.mjs'
 import { createAuth } from './auth.mjs'
 import { listProposals, decide, probationItems } from './proposals.mjs'
@@ -341,6 +341,12 @@ export function createHandler({ home }) {
       // /api/blocks/:id
       if (parts[1] === 'blocks' && parts[2]) {
         const id = decodeURIComponent(parts[2])
+        if (req.method === 'POST' && parts[3] === 'move') {
+          const body = await readJson(req)
+          const result = moveBlock(db, home, id, body.domain)
+          json(res, 200, { ok: true, data: result })
+          return
+        }
         if (req.method === 'GET') {
           const row = getBlock(db, id)
           if (!row) { json(res, 404, { ok: false, error: '找不到' }); return }

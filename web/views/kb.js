@@ -167,6 +167,7 @@ function detailHtml(d) {
     <div class="actions">
       <button class="btn primary" data-act="save">保存</button>
       <button class="btn" data-act="refine">追加补充</button>
+      <button class="btn" data-act="move" data-id="${esc(d.id)}" data-domain="${esc(d.domain)}">移动分区</button>
       <button class="btn danger" data-act="delete">删除（进回收站）</button>
     </div>`
 }

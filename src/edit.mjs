@@ -5,6 +5,8 @@
  * 领域或类型一变，文件就得搬家，映射、孤儿、经验归属全要跟着重算——
  * 那是"移动"操作，不该藏在编辑框里。
  */
+import fs from 'node:fs'
+import path from 'node:path'
 import { getBlock, upsertBlock, softDelete } from './db.mjs'
 import { readBlockFile, writeBlockFile, moveToTrash } from './blocks.mjs'
 import { normalizeExp, orphanExperiences } from './experience.mjs'
@@ -63,4 +65,29 @@ export function removeBlock(db, home, id) {
   softDelete(db, id, new Date().toISOString())
   const orphaned = row.type === 'knowledge' ? orphanExperiences(db, home, id) : []
   return { id, orphaned }
+}
+
+/**
+ * 移动块到另一个分区（搬家）。
+ * 领域一变文件路径就变，所以要：写新文件 → 更新索引 → 删旧文件。
+ * 只允许两级「分区/主题」；不允许移到「待分区」以外的半截名字。
+ */
+export function moveBlock(db, home, id, domain) {
+  const row = getBlock(db, id)
+  if (!row) throw new Error(`找不到：${id}`)
+  const next = String(domain ?? '').trim()
+  if (!/^[^/]+\/[^/]+$/.test(next)) throw new Error('分区要写成「分区/主题」两级，例如 网络/HTTP')
+  if (next === row.domain) return { id, domain: next, moved: false, path: row.path }
+
+  const block = readBlockFile(row.path)
+  block.domain = next
+  block.modified_at = new Date().toISOString()
+  const oldPath = row.path
+  const newPath = writeBlockFile(home, block)
+  db.prepare('UPDATE blocks SET domain = ?, path = ?, modified_at = ? WHERE id = ?')
+    .run(next, newPath, block.modified_at, id)
+  try {
+    if (path.resolve(oldPath) !== path.resolve(newPath)) fs.rmSync(oldPath, { force: true })
+  } catch { /* 旧文件删不掉不影响索引 */ }
+  return { id, domain: next, moved: true, path: newPath }
 }

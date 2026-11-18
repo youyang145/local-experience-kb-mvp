@@ -10,13 +10,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { consult, indexSummary } from './consult.mjs'
+import { consult, indexSummary, readBodies } from './consult.mjs'
 import { planIngest, applyPlan } from './ingest.mjs'
 import { submit } from './proposals.mjs'
 import { counts } from './db.mjs'
 
 const PROTOCOL = '2024-11-05'
-const SPEC_VERSION = '1.0'
+const SPEC_VERSION = '1.1'
 /** 向上找最近的 package.json：src 和插件 lib/kb 的层级不同，不能写死。 */
 function packageVersion() {
   let dir = path.dirname(fileURLToPath(import.meta.url))
@@ -63,6 +63,23 @@ const TOOLS = [
     name: 'kb_index',
     description: '看本地知识库的目录：有哪些分区、每个分区几条、最近几条标题。',
     inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'kb_read',
+    description: '按 id 读正文（最多 3 条）。consult 给的是简介，要下结论或引用细节时再用它，别一次读很多。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ids: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          maxItems: 3,
+          description: '要读的块 id，最多 3 个',
+        },
+      },
+      required: ['ids'],
+    },
   },
   {
     name: 'kb_stage',
@@ -167,6 +184,15 @@ function formatIndex(db) {
   return textResult(`本地知识库：${c.blocks} 块（知识 ${c.knowledge}，经验 ${c.experience}）\n${summary}`)
 }
 
+/** 第三级读取：按 id 取正文，最多 3 条，避免整库进上下文。 */
+function formatRead(db, args) {
+  const ids = Array.isArray(args?.ids) ? args.ids.map((x) => String(x)).slice(0, 3) : []
+  if (!ids.length) return textResult('给一个或多个 id（最多 3 个）。先用 kb_consult 拿 id。')
+  const rows = readBodies(db, ids, { max: 3 })
+  if (!rows.length) return textResult('没找到这些 id 的正文，先用 kb_consult 确认 id。')
+  return textResult(rows.map((row) => `# ${row.title}\n分区：${row.domain}\nid：${row.id}\n\n${row.body}`).join('\n\n---\n\n'))
+}
+
 /**
  * 处理一次 MCP 请求。
  * @returns {Promise<{status:number, body?:object, headers?:object}>}
@@ -231,8 +257,8 @@ export async function handleMcp(body, db, { home, sessionId } = {}) {
         instructions: [
           '本地经验库。用法：',
           '1. 技术问题、排错、需要历史经验时先调 kb_consult(query)；闲聊不查；零命中就用自己的知识答，并说明不是来自本库。',
-          '2. 想知道库的结构，调 kb_index()；索引摘要也会随本说明给出。',
-          '3. 返回的是简介，不是全文；要下结论前请读正文，或向用户要。',
+          '2. 想知道库的结构，调 kb_index()；本段索引每轮自动重建，不会因为聊得久就消失，但内容只是目录。',
+          '3. 读取分三级：本段索引（L1）→ kb_consult 的命中标题+简介（L2）→ 需要细节再用 kb_read(ids) 读正文（L3，最多 3 条）。别一次读很多。',
           `4. 写入是受限的：${WRITE_SCOPE}。新材料用 kb_stage 进收件箱，不要说自己“已入库”。`,
           '5. 用了经验用 kb_record 记账；想改结论用 kb_recommend + 理由，只进「待拍板」，由人决定。',
           '6. 主库的增删改、转正、推翻都只能由人做；不要直接改文件。',
@@ -269,6 +295,10 @@ export async function handleMcp(body, db, { home, sessionId } = {}) {
       if (name === 'kb_index') {
         logActivity(home, session, 'kb_index', {})
         return { status: 200, body: rpcResult(id, formatIndex(db)) }
+      }
+      if (name === 'kb_read') {
+        logActivity(home, session, 'kb_read', { ids: (args?.ids ?? []).slice(0, 3) })
+        return { status: 200, body: rpcResult(id, formatRead(db, args)) }
       }
       if (name === 'kb_stage') {
         const title = String(args?.title ?? '').trim()
@@ -324,6 +354,7 @@ export function mcpInfo(home) {
     sessions: [...sessions.values()],
   }
 }
+
 
 
 

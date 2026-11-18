@@ -994,6 +994,20 @@ function bind() {
         if (act === 'copy-id') {
           return copyText(btn.dataset.id, `已复制 ${btn.dataset.id}`)
         }
+        if (act === 'move') {
+          const id = btn.dataset.id ?? state.detail?.id
+          const current = btn.dataset.domain ?? state.detail?.domain ?? ''
+          if (!id) return
+          const domain = window.prompt('移到哪个分区？（两级，例如 网络/HTTP）', current)
+          if (!domain || domain.trim() === current) return
+          await api(`/api/blocks/${encodeURIComponent(id)}/move`, {
+            method: 'POST',
+            body: JSON.stringify({ domain: domain.trim() }),
+          })
+          toast(`已移到 ${domain.trim()}`)
+          await refreshAll()
+          return
+        }
         if (act === 'delete-id') {
           const title = btn.dataset.title || btn.dataset.id
           if (!window.confirm(`删除「${title}」？会进回收站，可恢复。`)) return
