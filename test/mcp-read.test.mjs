@@ -32,6 +32,7 @@ test('MCP kb_read：按 id 读正文，最多 3 条', async () => {
     const instructions = init.body.result.instructions
     assert.match(instructions, /两级/)
     assert.match(instructions, /claim/)
+    assert.match(instructions, /知识/)
     assert.match(instructions, /kb_read/)
 
     const list = await handleMcp({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, db, { home })
@@ -48,3 +49,4 @@ test('MCP kb_read：按 id 读正文，最多 3 条', async () => {
     fs.rmSync(home, { recursive: true, force: true })
   }
 })
+

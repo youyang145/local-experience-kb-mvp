@@ -83,7 +83,7 @@ const TOOLS = [
   },
   {
     name: 'kb_stage',
-    description: '把材料放进「待分区」收件箱（最多 5 块），只写收件箱、不写主库；人再决定挪到哪个分区。',
+    description: '把知识材料放进「待分区」收件箱（最多 5 块），只写收件箱、不写主库；人再决定挪到哪个分区。经验不要走这里。',
     inputSchema: {
       type: 'object',
       properties: {
@@ -266,7 +266,9 @@ export async function handleMcp(body, db, { home, sessionId } = {}) {
           '8. 自检：连上后先调 kb_index()，能返回块数就是连上了；块数为 0 只说明库是空的，不是没连上。缺参数或缺会话头会返回 -32602。',
           '9. 分区用两级「分区/主题」；kb_stage 只进「待分区」收件箱，它不是家，主库由人挪。',
           '10. 经验要写清 claim（一句可判真假的话）/ scope（何时成立）/ limits（何时不成立）；转正、推翻只能建议，带理由走 kb_recommend。',
-          '11. 这份说明只在 initialize 返回一次；完整契约见库内 docs/spec/mcp-tool-contract.md。',
+          '11. 先判类型：事实、做法、参数、来源 → 知识；"实际用过/踩过才得出的判断"才是经验。默认写知识，别把结论一上来写成经验。',
+          '12. 经验不能由 AI 直接创建：没有真实使用记录、没有 scope/limits 的，不要写成经验；只能 kb_record 记账，或 kb_recommend 提名让人审。',
+          '13. 这份说明只在 initialize 返回一次；完整契约见库内 docs/spec/mcp-tool-contract.md。',
           `你的连接编号：${session.editor}（已记录 clientInfo：${session.client}）。`,
           '库的目录：',
           summary,
@@ -357,6 +359,7 @@ export function mcpInfo(home) {
     sessions: [...sessions.values()],
   }
 }
+
 
 
 
