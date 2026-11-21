@@ -10,6 +10,7 @@ import { initHome, kbHome, layout, readConfig } from './config.mjs'
 import {
   openDb, upsertBlock, getBlock, listBlocks, searchBlocks, softDelete, counts, orphans,
 } from './db.mjs'
+import { search } from './search.mjs'
 import { readBlockFile, writeBlockFile, moveToTrash } from './blocks.mjs'
 import { buildCandidate, captureMaterial } from './capture.mjs'
 import { pending, accept, reject, describe, pendingCount } from './review.mjs'
@@ -265,6 +266,28 @@ function cmdPath(positional) {
   if (!row) throw new Error(`找不到：${id}`)
   console.log(row.path)
   return 0
+}
+
+async function cmdDeep(flags, positional) {
+  const { home, db } = open()
+  const query = positional.join(' ').trim()
+  if (!query) throw new Error('用法：kb deep <关键词> [--profile quick|balanced|complete] [--limit N]')
+  try {
+    const result = await search(db, query, {
+      home,
+      mode: 'deep',
+      profile: flags.profile ? String(flags.profile) : 'balanced',
+      limit: Number(flags.limit ?? 10),
+    })
+    if (!result.rows.length) { console.log('深扫没有命中'); return 1 }
+    for (const [i, row] of result.rows.entries()) {
+      console.log(`${i + 1}. [${(row.sources ?? ['deep']).join('+')}] ${row.title}（${row.domain || '—'}）`)
+    }
+    console.log(`\n覆盖 ${(result.coverage * 100).toFixed(1)}%｜完整=${result.complete ? '是' : '否'}｜${result.elapsedMs.toFixed(0)} ms`)
+    return 0
+  } finally {
+    db.close()
+  }
 }
 
 function cmdSearch(flags, positional) {
@@ -938,6 +961,7 @@ export async function run(argv) {
     case 'toc': return cmdToc(positional)
     case 'path': return cmdPath(positional)
     case 'search': return cmdSearch(flags, positional)
+    case 'deep': return cmdDeep(flags, positional)
     case 'consult': return cmdConsult(flags, positional)
     case 'ingest': return cmdIngest(flags, positional)
     case 'review': return cmdReview(flags)
@@ -984,6 +1008,7 @@ export async function run(argv) {
       throw new Error(`未知命令：${command}（看 kb help）`)
   }
 }
+
 
 
 

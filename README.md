@@ -77,6 +77,18 @@ node 测试/run-checks.mjs   # 12 项端到端检查（在骨架仓库里）
 
 > 这是合成数据，不含向量/图检索；真实语料与并发另算。
 
+## 文件级深扫（可选）
+
+索引覆盖不到时（零命中、附件/文件类查询、索引缺失），可以走文件级深扫：
+
+```bash
+node bin/kb.mjs deep "关键词" --profile balanced
+```
+
+- 四方向互助补全 + path/hash 去重 + 预算；
+- 输出带 `覆盖 x%｜完整=是/否`，预算用完不会假装扫完；
+- 默认不参与 `kb_consult`；`src/search.mjs` 预留了 `auto` 编排接口。
+
 ## 与骨架的关系
 
 - 行为是否对齐，看骨架仓库的 [一致性清单](https://github.com/youyang145/local-experience-kb/blob/main/docs/一致性清单.md)；
