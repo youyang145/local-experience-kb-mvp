@@ -50,6 +50,7 @@ function loadEditorSeq(home) {
 const TOOLS = [
   {
     name: 'kb_consult',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     description: '查本地知识库：先判要不要查，再给索引摘要与命中（简介，不含全文）。用于技术问题、排错、需要历史经验时。',
     inputSchema: {
       type: 'object',
@@ -62,6 +63,7 @@ const TOOLS = [
   },
   {
     name: 'kb_deep',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     description: '文件级深扫：索引查不到、或要找附件/文件时用。四方向互助补全扫 blocks 目录，比 consult 慢；返回覆盖率与完整性，默认不用。',
     inputSchema: {
       type: 'object',
@@ -75,11 +77,13 @@ const TOOLS = [
   },
   {
     name: 'kb_index',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     description: '看本地知识库的目录：有哪些分区、每个分区几条、最近几条标题。',
     inputSchema: { type: 'object', properties: {} },
   },
   {
     name: 'kb_read',
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     description: '按 id 读正文（最多 3 条）。consult 给的是简介，要下结论或引用细节时再用它，别一次读很多。',
     inputSchema: {
       type: 'object',
@@ -97,6 +101,7 @@ const TOOLS = [
   },
   {
     name: 'kb_stage',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     description: '把知识材料放进「待分区」收件箱（最多 5 块），只写收件箱、不写主库；人再决定挪到哪个分区。经验不要走这里。',
     inputSchema: {
       type: 'object',
@@ -109,6 +114,7 @@ const TOOLS = [
   },
   {
     name: 'kb_recommend',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     description: '给某条经验提建议：转正或推翻，必须带理由。只进「待拍板」，由人一票决定，AI 不执行。',
     inputSchema: {
       type: 'object',

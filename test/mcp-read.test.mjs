@@ -37,6 +37,10 @@ test('MCP kb_read：按 id 读正文，最多 3 条', async () => {
 
     const list = await handleMcp({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, db, { home })
     assert.ok(list.body.result.tools.some((tool) => tool.name === 'kb_read'))
+    const consult = list.body.result.tools.find((tool) => tool.name === 'kb_consult')
+    assert.equal(consult.annotations.readOnlyHint, true)
+    const stage = list.body.result.tools.find((tool) => tool.name === 'kb_stage')
+    assert.equal(stage.annotations.readOnlyHint, false)
 
     const read = await handleMcp(
       { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'kb_read', arguments: { ids: [block.id] } } },
