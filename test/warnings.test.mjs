@@ -64,6 +64,27 @@ test('切词：汉字二元组、拉丁整词', () => {
   assert.deepEqual(queryTerms('pnpm store'), ['pnpm', 'store'])
 })
 
+test('拉丁词边界：npm 不命中 pnpm', () => {
+  const { dir, cleanup } = tempHome()
+  try {
+    initHome(dir)
+    const db = openDb(layout(dir).db)
+    const exp = makeExperience({
+      claim: 'pnpm 安装会写到工作区外',
+      domain: '工具/包管理',
+      scope: 'pnpm 安装依赖时',
+      body: 'pnpm 的依赖目录默认在用户目录，不走工作区。',
+    })
+    const abs = writeBlockFile(dir, exp)
+    upsertBlock(db, { ...exp, path: abs })
+    refute(db, dir, exp.id, { by: 'npm 项目实测', note: '两种包管理器的目录布局不同' })
+
+    assert.equal(findWarnings(db, 'npm store').length, 0, 'npm 不该命中 pnpm')
+    assert.equal(findWarnings(db, 'pnpm 安装').length, 1, 'pnpm 自己该命中')
+    db.close()
+  } finally { cleanup() }
+})
+
 test('单词查询不弹反例；多词且高度相似才弹', () => {
   const { dir, cleanup } = tempHome()
   try {

@@ -30,6 +30,16 @@ function refutedRows(db) {
     WHERE type='experience' AND status='refuted' AND deleted_at IS NULL`).all()
 }
 
+/**
+ * 词项命中：中文 bigram 用子串；拉丁词用词边界，避免 npm 命中 pnpm。
+ * 词项里带 + / # 这类符号的，退回子串（它们本身不是词）。
+ */
+function containsTerm(hay, term) {
+  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(term)) return hay.includes(term)
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i').test(hay)
+}
+
 function describe(row, meta) {
   return {
     id: row.id,
@@ -54,7 +64,7 @@ export function findWarnings(db, query, { limit = 3, minTerms = 2, minOverlap = 
     const meta = readBlockFile(row.path)
     const hay = [meta.claim, meta.title, meta.scope, meta.limits, meta.body]
       .filter(Boolean).join(' ').toLowerCase()
-    const overlap = terms.filter((term) => hay.includes(term)).length / terms.length
+    const overlap = terms.filter((term) => containsTerm(hay, term)).length / terms.length
     if (overlap < minOverlap) continue
     hits.push({ ...describe(row, meta), overlap })
   }
@@ -79,7 +89,7 @@ export function warningsForApply(db, id, { limit = 3 } = {}) {
     const refMeta = readBlockFile(ref.path)
     const hay = [refMeta.claim, refMeta.title, refMeta.scope, refMeta.limits, refMeta.body]
       .filter(Boolean).join(' ').toLowerCase()
-    const shared = terms.filter((term) => hay.includes(term)).length
+    const shared = terms.filter((term) => containsTerm(hay, term)).length
     const sameDomain = refMeta.domain && refMeta.domain === meta.domain
     if (shared < (sameDomain ? 1 : 2)) continue
     hits.push({ ...describe(ref, refMeta), shared })
@@ -93,3 +103,4 @@ export function searchWithWarnings(db, query, { limit = 10, includeRefuted = fal
   const rows = searchBlocks(db, query, { limit, includeRefuted })
   return { rows, warnings: includeRefuted ? [] : findWarnings(db, query) }
 }
+
