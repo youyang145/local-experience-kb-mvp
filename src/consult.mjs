@@ -30,30 +30,39 @@ export function indexSummary(db, { topDomains = 8, titlesPerDomain = 2 } = {}) {
     WHERE deleted_at IS NULL GROUP BY domain ORDER BY n DESC LIMIT ?`).all(topDomains)
   if (!domains.length) return { text: `${head}\n（还没有分区内容）`, domains: [], totals }
 
+  // 一次查出所有分区的类型计数，避免每个分区两次查询（10k 条时这是主要开销）
+  const typeRows = db.prepare(`SELECT domain, type, count(*) AS n FROM blocks
+    WHERE deleted_at IS NULL GROUP BY domain, type`).all()
+  const typeMap = new Map()
+  for (const row of typeRows) {
+    if (!typeMap.has(row.domain)) typeMap.set(row.domain, { knowledge: 0, experience: 0 })
+    const entry = typeMap.get(row.domain)
+    if (row.type === 'knowledge') entry.knowledge = row.n
+    if (row.type === 'experience') entry.experience = row.n
+  }
+
+  // 每个分区按 domain 索引取最近标题（窗口函数会扫全表排序，10k 时反而慢）
+  const titleStmt = db.prepare(`SELECT title, type FROM blocks
+    WHERE deleted_at IS NULL AND domain = ?
+    ORDER BY created_at DESC LIMIT ?`)
+
   const list = domains.map((d) => {
-    const byType = db.prepare(`SELECT type, count(*) AS n FROM blocks
-      WHERE deleted_at IS NULL AND (domain = ? OR domain LIKE ? || '/%') GROUP BY type`)
-      .all(d.domain, d.domain)
-    const knowledge = byType.find((row) => row.type === 'knowledge')?.n ?? 0
-    const experience = byType.find((row) => row.type === 'experience')?.n ?? 0
-    const rows = db.prepare(`SELECT title, type FROM blocks
-      WHERE deleted_at IS NULL AND (domain = ? OR domain LIKE ? || '/%')
-      ORDER BY created_at DESC LIMIT ?`).all(d.domain, d.domain, titlesPerDomain)
+    const countsByType = typeMap.get(d.domain) ?? { knowledge: 0, experience: 0 }
+    const rows = titleStmt.all(d.domain, titlesPerDomain)
     const label = d.domain === '待分区' ? '待分区·收件箱' : d.domain
-    const types = [knowledge ? `知识 ${knowledge}` : '', experience ? `经验 ${experience}` : ''].filter(Boolean).join(' / ')
+    const types = [countsByType.knowledge ? `知识 ${countsByType.knowledge}` : '', countsByType.experience ? `经验 ${countsByType.experience}` : ''].filter(Boolean).join(' / ')
     const titles = rows.map((row) => `${row.type === 'experience' ? '经验·' : ''}${row.title}`).join('、')
     return {
       domain: d.domain,
       count: d.n,
-      knowledge,
-      experience,
+      knowledge: countsByType.knowledge,
+      experience: countsByType.experience,
       titles: rows.map((row) => row.title),
       line: `${label}（${d.n}${types ? '｜' + types : ''}）：${titles || '—'}`,
     }
   })
 
-  const hidden = db.prepare(`SELECT count(*) AS n FROM (
-    SELECT domain FROM blocks WHERE deleted_at IS NULL GROUP BY domain)`).get().n - list.length
+  const hidden = typeMap.size - list.length
   const lines = [head, ...list.map((d) => d.line)]
   if (hidden > 0) lines.push(`…还有 ${hidden} 个分区未列出，需要时调 kb_index 看全部`)
   return { text: lines.join('\n'), domains: list, totals }

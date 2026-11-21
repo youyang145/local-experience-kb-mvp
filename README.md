@@ -64,6 +64,19 @@ node --test test/          # 48 项库测试
 node 测试/run-checks.mjs   # 12 项端到端检查（在骨架仓库里）
 ```
 
+## 规模基准（2026-11-21）
+
+`node scripts/bench-search.mjs`（默认 5000 条；`--count 10000` 可调）。只造索引行，不写文件，测"查索引"的成本：
+
+| 块数 | searchBlocks p95 | consult（含摘要）p95 | 索引文件 |
+|---|---|---|---|
+| 1,000 | 2.1 ms | 5.7 ms | 1.8 MB |
+| 10,000 | 51.4 ms | 94.3 ms | 17.6 MB |
+
+修复前 10k 条时 `consult` 的 p95 是 **955 ms**——瓶颈是索引摘要逐分区回表查，不是检索本身。加了三个覆盖索引（`deleted_at, domain, type` 等）后降到 94 ms。
+
+> 这是合成数据，不含向量/图检索；真实语料与并发另算。
+
 ## 与骨架的关系
 
 - 行为是否对齐，看骨架仓库的 [一致性清单](https://github.com/youyang145/local-experience-kb/blob/main/docs/一致性清单.md)；

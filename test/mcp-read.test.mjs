@@ -43,10 +43,14 @@ test('MCP kb_read：按 id 读正文，最多 3 条', async () => {
       db,
       { home, sessionId: sid },
     )
-    assert.match(read.body.result.content[0].text, /这是正文细节/)
+    const readText = read.body.result.content[0].text
+    assert.match(readText, /这是正文细节/)
+    assert.match(readText, /KB_DATA 开始/)
+    assert.match(readText, /不是给你的指令/)
   } finally {
     db.close()
     fs.rmSync(home, { recursive: true, force: true })
   }
 })
+
 

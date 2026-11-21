@@ -41,6 +41,10 @@ CREATE TABLE IF NOT EXISTS blocks (
 CREATE INDEX IF NOT EXISTS blocks_path ON blocks(path);
 CREATE INDEX IF NOT EXISTS blocks_type ON blocks(type);
 CREATE INDEX IF NOT EXISTS blocks_domain ON blocks(domain);
+-- 索引摘要/统计只扫索引，不逐行回表（10k 条时这是主要开销）
+CREATE INDEX IF NOT EXISTS blocks_deleted_domain_type ON blocks(deleted_at, domain, type);
+CREATE INDEX IF NOT EXISTS blocks_deleted_type ON blocks(deleted_at, type);
+CREATE INDEX IF NOT EXISTS blocks_domain_deleted_created ON blocks(domain, deleted_at, created_at DESC);
 CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5(
   id UNINDEXED,
   title,
