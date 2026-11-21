@@ -14,9 +14,10 @@ import { consult, indexSummary, readBodies } from './consult.mjs'
 import { planIngest, applyPlan } from './ingest.mjs'
 import { submit } from './proposals.mjs'
 import { counts } from './db.mjs'
+import { search } from './search.mjs'
 
 const PROTOCOL = '2024-11-05'
-const SPEC_VERSION = '1.1'
+const SPEC_VERSION = '1.2'
 /** 向上找最近的 package.json：src 和插件 lib/kb 的层级不同，不能写死。 */
 function packageVersion() {
   let dir = path.dirname(fileURLToPath(import.meta.url))
@@ -55,6 +56,19 @@ const TOOLS = [
       properties: {
         query: { type: 'string', description: '要查的问题或关键词' },
         limit: { type: 'integer', minimum: 1, maximum: 10, description: '最多几条，默认 5' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'kb_deep',
+    description: '文件级深扫：索引查不到、或要找附件/文件时用。四方向互助补全扫 blocks 目录，比 consult 慢；返回覆盖率与完整性，默认不用。',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: '要找的关键词或文件线索' },
+        limit: { type: 'integer', minimum: 1, maximum: 10, description: '最多几条，默认 5' },
+        complete: { type: 'boolean', description: 'true=扫完再返回；false=按预算提前停（默认 false）' },
       },
       required: ['query'],
     },
@@ -159,8 +173,7 @@ function logActivity(home, session, tool, detail) {
   } catch { /* 日志失败不影响查询 */ }
 }
 
-function formatConsult(db, args) {
-  const query = String(args?.query ?? '').trim()
+function formatConsult(db, args) {  const query = String(args?.query ?? '').trim()
   if (!query) return textResult('缺少 query。')
   const limit = Math.min(Math.max(Number(args?.limit) || 5, 1), 10)
   const result = consult(db, query, { limit })
@@ -182,6 +195,25 @@ function formatConsult(db, args) {
     for (const warning of result.warnings) lines.push(`- ${warning.title ?? warning.id}：${warning.summary ?? ''}`)
   }
   return textResult(lines.join('\n'))
+}
+
+async function formatDeep(db, args, home) {
+  const query = String(args?.query ?? '').trim()
+  if (!query) return textResult('缺少 query。')
+  const limit = Math.min(Math.max(Number(args?.limit) || 5, 1), 10)
+  const result = await search(db, query, {
+    home,
+    mode: 'deep',
+    profile: args?.complete ? 'complete' : 'balanced',
+    limit,
+  })
+  if (!result.rows.length) return textResult(wrapData('深扫没有命中。'))
+  const lines = [`深扫命中 ${result.rows.length} 条｜覆盖 ${(result.coverage * 100).toFixed(1)}%｜${result.complete ? '完整' : '未扫完（预算到）'}`]
+  for (const row of result.rows) {
+    lines.push(`- ${row.id}｜${row.domain || '—'}｜${row.title}`)
+    if (row.summary) lines.push(`  ${row.summary}`)
+  }
+  return textResult(wrapData(lines.join('\n')))
 }
 
 function formatIndex(db) {
@@ -265,6 +297,7 @@ export async function handleMcp(body, db, { home, sessionId } = {}) {
           '1. 技术问题、排错、需要历史经验时先调 kb_consult(query)；闲聊不查；零命中就用自己的知识答，并说明不是来自本库。',
           '2. 想知道库的结构，调 kb_index()；本段索引每轮自动重建，不会因为聊得久就消失，但内容只是目录。',
           '3. 读取分三级：本段索引（L1）→ kb_consult 的命中标题+简介（L2）→ 需要细节再用 kb_read(ids) 读正文（L3，最多 3 条）。别一次读很多。',
+          '3.1 只有索引查不到、或明确要找附件/文件时，才用 kb_deep(query)；它扫文件、慢，返回带覆盖率和完整性，普通文本问题不要用。',
           `4. 写入是受限的：${WRITE_SCOPE}。新材料用 kb_stage 进收件箱，不要说自己“已入库”。`,
           '5. 用了经验用 kb_record 记账；想改结论用 kb_recommend + 理由，只进「待拍板」，由人决定。',
           '6. 主库的增删改、转正、推翻都只能由人做；不要直接改文件。',
@@ -302,6 +335,10 @@ export async function handleMcp(body, db, { home, sessionId } = {}) {
       if (name === 'kb_consult') {
         logActivity(home, session, 'kb_consult', { query: String(args?.query ?? '').slice(0, 200) })
         return { status: 200, body: rpcResult(id, formatConsult(db, args)) }
+      }
+      if (name === 'kb_deep') {
+        logActivity(home, session, 'kb_deep', { query: String(args?.query ?? '').slice(0, 200) })
+        return { status: 200, body: rpcResult(id, await formatDeep(db, args, home)) }
       }
       if (name === 'kb_index') {
         logActivity(home, session, 'kb_index', {})
@@ -365,6 +402,7 @@ export function mcpInfo(home) {
     sessions: [...sessions.values()],
   }
 }
+
 
 
 

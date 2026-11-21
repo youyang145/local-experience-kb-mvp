@@ -34,7 +34,7 @@ node bin/kb.mjs serve          # 打开 http://127.0.0.1:7788
 | 查 | 索引摘要 → 按需检索 → 读正文，三层 |
 | 记 | 经验有账：用过、成了、复现、补充、人票 |
 | 判 | AI 提案必须带理由，人一票决定；推翻保留为反例 |
-| 接 | MCP：`POST /mcp`，五个工具（含 kb_read），带连接编号与留痕 |
+| 接 | MCP：`POST /mcp`，六个工具（含 kb_read），带连接编号与留痕 |
 | 备 | 整库 zip 备份；恢复分增量/覆盖，二次确认 |
 
 ## 命令
@@ -60,7 +60,7 @@ kb serve [--port 7788]
 ## DSH 插件（可选）
 
 DSH 适配器已经独立成库：[dsh-plugin-local-kb](https://github.com/youyang145/dsh-plugin-local-kb)。
-六个工具 + 右下角挂件 + 每轮索引注入 + MCP。
+七个工具 + 右下角挂件 + 每轮索引注入 + MCP。
 
 ```powershell
 dsh plugin --profile <profile> add github:youyang145/dsh-plugin-local-kb --ignore-workspace-root-check
@@ -69,7 +69,7 @@ dsh plugin --profile <profile> add github:youyang145/dsh-plugin-local-kb --ignor
 ## 测试
 
 ```bash
-node --test test/          # 51 项库测试
+node --test test/          # 52 项库测试
 node 测试/run-checks.mjs   # 12 项端到端检查（在骨架仓库里）
 ```
 
